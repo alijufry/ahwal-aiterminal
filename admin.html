@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHWAL-01 // ADMIN CONTROL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #050505; --text: #10b981; --border: #065f46; --hover: #022c22; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Fira Code', monospace; }
+        body { background: var(--bg); color: var(--text); padding: 20px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { font-size: 18px; text-shadow: 0 0 10px var(--text); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+        th { background: var(--hover); text-transform: uppercase; letter-spacing: 1px; }
+        tr:hover { background: var(--hover); }
+        .ip { color: #ef4444; font-weight: bold; }
+        .ua { color: #888; font-size: 11px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .msg { color: #fff; }
+        .time { color: #888; font-size: 11px; }
+        #login-screen { text-align: center; margin-top: 20vh; }
+        input { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 10px; font-size: 16px; outline: none; margin-bottom: 10px; }
+        button { background: var(--text); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h1>🔒 RESTRICTED ACCESS</h1>
+        <p style="margin: 10px 0 20px; color: #888;">Enter Admin Password to view surveillance logs.</p>
+        <input type="password" id="pass" placeholder="Password...">
+        <br>
+        <button onclick="checkPass()">AUTHENTICATE</button>
+    </div>
+
+    <div id="dashboard" style="display: none;">
+        <div class="header">
+            <h1>👁️ AHWAL-01 // SURVEILLANCE FEED</h1>
+            <div>LIVE UPDATES: <span id="count">0</span> LOGS</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP Address</th>
+                    <th>Device / Browser</th>
+                    <th>Message Intercepted</th>
+                </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://mroukfulsjakdnsiesqv.supabase.co/rest/v1/";
+        const SUPABASE_KEY = "sb_publishable_wVl2TVD0LEGZwoqMSn_Diw_z5B-6BU8";
+        const ADMIN_PASS = "rahasiaali"; // GANTI PASSWORD INI KALAU MAU
+
+        function checkPass() {
+            const p = document.getElementById('pass').value;
+            if (p === ADMIN_PASS) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                fetchLogs();
+                setInterval(fetchLogs, 5000); // Auto-refresh tiap 5 detik
+            } else {
+                alert("ACCESS DENIED.");
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}chat_logs?select=*&order=created_at.desc&limit=50`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                const data = await res.json();
+                
+                const tbody = document.getElementById('log-body');
+                tbody.innerHTML = '';
+                document.getElementById('count').innerText = data.length;
+
+                data.forEach(log => {
+                    const tr = document.createElement('tr');
+                    const date = new Date(log.created_at);
+                    const timeStr = date.toLocaleString('id-ID');
+                    
+                    tr.innerHTML = `
+                        <td class="time">${timeStr}</td>
+                        <td class="ip">${log.ip_address || 'Unknown'}</td>
+                        <td class="ua" title="${log.user_agent}">${log.user_agent}</td>
+                        <td class="msg">"${log.message}"</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error("Gagal mengambil data", e);
+            }
+        }
+    </script>
+</body>
+</html>
