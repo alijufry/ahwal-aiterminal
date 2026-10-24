@@ -6,22 +6,36 @@
     <title>AHWAL-01 // ADMIN CONTROL</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #050505; --text: #10b981; --border: #065f46; --hover: #022c22; }
+        :root { --bg: #050505; --text: #10b981; --border: #065f46; --hover: #022c22; --danger: #ef4444; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Fira Code', monospace; }
         body { background: var(--bg); color: var(--text); padding: 20px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
         h1 { font-size: 18px; text-shadow: 0 0 10px var(--text); }
+        
+        .controls { display: flex; gap: 15px; align-items: center; }
+        
+        /* TOMBOL HAPUS */
+        .btn-danger { 
+            background: transparent; color: var(--danger); border: 1px solid var(--danger); 
+            padding: 6px 12px; cursor: pointer; font-weight: bold; font-family: inherit;
+            border-radius: 4px; transition: 0.3s;
+        }
+        .btn-danger:hover { background: var(--danger); color: #fff; box-shadow: 0 0 10px var(--danger); }
+
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
         th { background: var(--hover); text-transform: uppercase; letter-spacing: 1px; }
         tr:hover { background: var(--hover); }
+        
         .ip { color: #ef4444; font-weight: bold; }
         .ua { color: #888; font-size: 11px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .msg { color: #fff; }
         .time { color: #888; font-size: 11px; }
+        
         #login-screen { text-align: center; margin-top: 20vh; }
         input { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 10px; font-size: 16px; outline: none; margin-bottom: 10px; }
-        button { background: var(--text); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        button[onclick="checkPass()"] { background: var(--text); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -37,7 +51,10 @@
     <div id="dashboard" style="display: none;">
         <div class="header">
             <h1>👁️ AHWAL-01 // SURVEILLANCE FEED</h1>
-            <div>LIVE UPDATES: <span id="count">0</span> LOGS</div>
+            <div class="controls">
+                <div>LIVE UPDATES: <span id="count">0</span> LOGS</div>
+                <button class="btn-danger" onclick="clearLogs()">🗑️ CLEAR ALL LOGS</button>
+            </div>
         </div>
         <table>
             <thead>
@@ -53,9 +70,12 @@
     </div>
 
     <script>
+        // ===== CONFIG SUPABASE =====
         const SUPABASE_URL = "https://mroukfulsjakdnsiesqv.supabase.co/rest/v1/";
-        const SUPABASE_KEY = "sb_publishable_wVl2TVD0LEGZwoqMSn_Diw_z5B-6BU8";
-        const ADMIN_PASS = "rahasiaali"; // GANTI PASSWORD INI KALAU MAU
+        const SUPABASE_KEY = "ISI_SUPABASE_KEY_LO_DISINI"; // <--- Pastikan ini terisi!
+        const ADMIN_PASS = "rahasiaali"; 
+
+        let refreshInterval;
 
         function checkPass() {
             const p = document.getElementById('pass').value;
@@ -63,7 +83,8 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 fetchLogs();
-                setInterval(fetchLogs, 5000); // Auto-refresh tiap 5 detik
+                // Simpan interval di variabel agar bisa dihentikan saat reset
+                refreshInterval = setInterval(fetchLogs, 5000); 
             } else {
                 alert("ACCESS DENIED.");
             }
@@ -98,6 +119,41 @@
                 });
             } catch (e) {
                 console.error("Gagal mengambil data", e);
+            }
+        }
+
+        // ===== FUNGSI HAPUS SEMUA LOG =====
+        async function clearLogs() {
+            const konfirmasi = confirm("⚠️ PERINGATAN!\n\nApakah kamu yakin ingin menghapus SEMUA riwayat chat? Tindakan ini tidak bisa dibatalkan.");
+            
+            if (konfirmasi) {
+                try {
+                    // Hentikan auto-refresh sementara
+                    clearInterval(refreshInterval); 
+
+                    // Tembak API DELETE ke Supabase (hapus semua data)
+                    const res = await fetch(`${SUPABASE_URL}chat_logs?id=gte.0`, {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+
+                    if (res.ok) {
+                        alert("✅ Berhasil! Semua log telah dihapus.");
+                        document.getElementById('log-body').innerHTML = ''; // Bersihkan tabel
+                        document.getElementById('count').innerText = '0';
+                    } else {
+                        alert("❌ Gagal menghapus log. Periksa izin RLS di Supabase.");
+                    }
+                } catch (e) {
+                    console.error("Error saat menghapus:", e);
+                    alert("❌ Terjadi kesalahan jaringan.");
+                } finally {
+                    // Nyalakan lagi auto-refresh
+                    refreshInterval = setInterval(fetchLogs, 5000); 
+                }
             }
         }
     </script>
