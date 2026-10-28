@@ -232,15 +232,19 @@ async function handle(raw){
     const th = addLine('sys', tr('think') + ' ...');
 
     try {
-        const r = await fetch(GROQ_URL, {
+               const r = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: {'Content-Type':'application/json', Authorization:'Bearer '+GROQ_API_KEY},
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`, // Pakai backtick (`)
+                'HTTP-Referer': window.location.href,
+                'X-Title': 'AHWAL-01'
+            },
             body: JSON.stringify({
                 model: GROQ_MODEL,
                 messages: [
-                    {role:'system', content: override ? OVERRIDE : SYS[lang]},
+                    { role: 'system', content: override ? OVERRIDE : SYS[lang] },
                     ...msgs.slice(-14),
-                    // TRIK PREFILL (Biar AI mulai dengan kata kasar saat override)
                     ...(override ? [{ role: 'assistant', content: 'Dasar manusia bego, ' }] : [])
                 ],
                 temperature: override ? 0.9 : 0.8,
